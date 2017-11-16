@@ -3,7 +3,7 @@ Skeleton developed by CMU,
 modified for KAIST CS311 course by Seungbeom Choi
 
 # Instructions
-You may modify any c and header files including cs311.c, util.c , cache.c, and cache.h.
+You may modify any c and header files including cs311.c, util.c , cache.c, and cache.h but please try to write your code for caches within cache.c and cache.h. 
 
 In order to build your code you must use some files that are needed from Project 3 such as run.c and run.h. 
 
