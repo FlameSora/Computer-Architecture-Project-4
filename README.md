@@ -5,7 +5,7 @@ modified for KAIST CS311 course by Seungbeom Choi
 # Instructions
 You may modify any c and header files including cs311.c, util.c , cache.c, and cache.h but please try to write your code for caches within cache.c and cache.h. 
 
-In order to build your code you must use some files that are needed from Project 3 such as run.c and run.h. 
+In order to build your code you must use some files that you have written for project 3 such as run.c and run.h. 
 
 You are banned to modify files that are related to grading( files under grading\_input and grading\_output ). 
 
