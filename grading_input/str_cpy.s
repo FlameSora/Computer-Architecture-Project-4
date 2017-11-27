@@ -407,11 +407,11 @@ main:
 	la	$2,	darray	
 	addiu	$9,	$9,	200
 	
-L1:	addiu	$3,	$3,	1
-	lw	$4,	0($1)
-	sw	$4,	0($2)
+L1:	lw	$4,	0($1)
+	addiu	$3,	$3,	1
 	addiu	$1,	$1,	4
 	addiu	$2,	$2,	4
+	sw	$4,	0($2)
 	bne	$3,	$9,	L1
 out:	
 	addiu	$11, $11, 0

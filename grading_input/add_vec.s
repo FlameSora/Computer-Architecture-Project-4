@@ -314,11 +314,11 @@ loop:
 	lw	$7, 0($1)
 	lw	$8, 0($2)
 	addu	$9, $7, $8
-	sw	$9, 0($10)
 	addiu	$1, $1, 4
-	addiu	$2, $2, 4	
-	addiu	$10, $10, 4
-	addiu	$5, $5, 1	
+	addiu	$2, $2, 4
+	addiu	$5, $5, 1
+	sw	$9, 0($10)
+	addiu	$10, $10, 4	
 	bne	$3, $5,	loop
 end:
 	addiu	$11, $11, 1

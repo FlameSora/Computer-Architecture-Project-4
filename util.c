@@ -200,7 +200,6 @@ void mem_write_32(uint32_t address, uint32_t value){
 /*                                                             */
 /***************************************************************/
 void mem_write_block(uint32_t address, uint32_t *block) {
-	printf("write eviction on 0x%x\n",address);
 	mem_write_32(address,block[0]);
 	mem_write_32(address+4,block[1]);
 	return;
