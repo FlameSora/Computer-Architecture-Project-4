@@ -368,7 +368,7 @@ void MEM_Stage(){
 		if(OPCODE(instrp) == 43){
 			//sw 
 			int i, j;
-			
+			// cache hit
 			for (j = 0; j < 4; j++) {
 				if (Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][1] == TAG) {
 					Cache_info[Index_Bit][j][3] = 1;
