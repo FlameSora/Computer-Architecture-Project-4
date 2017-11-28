@@ -11,6 +11,7 @@
 
 #include "util.h"
 #include "run.h"
+#include "cache.h"
 
 /***************************************************************/
 /*                                                             */
@@ -38,6 +39,7 @@ void process_instruction(){
 	EX_Stage();
 	ID_Stage();
 	IF_Stage();
+	printf("%d\n", Cache_info[0][0][0]);
 }
 
 void IF_Stage(){
