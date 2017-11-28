@@ -337,27 +337,49 @@ void MEM_Stage(){
 		else if(OPCODE(instrp) == 35){
 		//lw
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-		       	uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<30)>>31;
-			uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<31)>>31;	
-			uint32_t TAG= (CURRENT_STATE.EX_MEM_ALU_OUT<<2)>>2;
+		       	uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<28)>>31;
+			uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<29)>>31;	
+			uint32_t TAG= (CURRENT_STATE.EX_MEM_ALU_OUT>>4;
 			int tempV = 0;
 			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
 			printf("index bit is: %x\n",Index_Bit);	
 			printf("block offset is: %x\n", Block_Offset);
 			for (int j = 0; j<4 ; j++){
-				if(tag[Index_Bit][j] ==  TAG && valid[Index_Bit][j] ==1){
+				if(Cache_info[Index_Bit][j][1] ==  TAG && Cache_info[Index_Bit][j][0] ==1){
 					CURRENT_STATE.MEM_WB_MEM_OUT = Cache[i][j][Block_Offset];
 					for(int i = 0;i<4;i++){
-						if(order[Index_Bit][i]< order[Index_Bit][j]&& valid[Index_Bit][i] ==1){
-							order[Index_Bit][i] +=1;
+						if(Cache_info[Index_Bit][i][2]< Cache_info[Index_Bit][j][2]&& Cache_info[Index_Bit][i][0] ==1){
+							Cache_info[Index_Bit][i][2] +=1;
 						} 
 					}
-					order[Index_Bit][j] = 0;
+					Cache_info[Index_Bit][j][2] = 0;
 					tempV = 1;
 				}	
 			}
 			if(tempV==0){
-				
+				//when cannot find the data from the cache:
+				//first find whether is a empty space:
+				int tempV2 = 0;
+				for(int j = 0; j<4; j++){
+					if(Cache_info[Index_Bit][j][0] ==0){
+						Cache_info[Index_Bit][j][0] =1;
+						Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.MEM_WB_MEM_OUT;
+						tempV2 =1;
+					}
+				}
+				if(tempV2 ==0){
+					
+					int tempJ =0;
+					int tempOrder = Cache_info[Index_Bit][0][2];
+					for(int j =0;j<4;j++){
+						if(Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][2] >tempOrder){
+							tempJ = j;
+							tempOrder = Cache_info[Index_Bit][j][2];
+						} 
+					}
+					
+
+				}
 			}
 		}
 		if(CURRENT_STATE.EX_MEM_BR_TAKE ==1){
