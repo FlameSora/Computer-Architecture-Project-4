@@ -33,7 +33,7 @@ void setupCache(int capacity, int num_way, int block_size)
 	for (i=0; i<nset; i++){	
 		for (j=0; j<num_way; j++){
 			Cache[i][j]=(uint32_t*)malloc(sizeof(uint32_t)*(_wpb));
-			Cache[i][j]=(uint32_t*)malloc(sizeof(uint32_t)*4);
+			Cache_info[i][j]=(uint32_t*)malloc(sizeof(uint32_t)*4);
 		}
 	}
 	for (i = 0; i < nset; i++) {
@@ -59,7 +59,7 @@ void setCacheMissPenalty(int penalty_cycles)
 {
 /*	code for setting up miss penaly			*/
 /*	You may add additional code if you need to	*/	
-	miss_penalty = penalty_cycles;
+	miss_penalty = 0;
 
 }
 
