@@ -34,22 +34,29 @@ instruction* get_inst_info(uint32_t pc) {
 /***************************************************************/
 void process_instruction(){
 	/** Your implementation here */
-	printf("%x cache 0 0: \n",Cache[0][0]);
+	
 	WB_Stage();
 	MEM_Stage();
 	EX_Stage();
 	ID_Stage();
 	IF_Stage();
-	printf("%d\n", Cache_info[0][0][0]);
+
+	if (miss_penalty != 0){
+		miss_penalty -= 1;
+	}
+
 }
 
 void IF_Stage(){
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if (CURRENT_STATE.PC - MEM_TEXT_START >= 4*NUM_INST) {
+	if(miss_penalty>0&&miss_penalty!=31){
+		CURRENT_STATE.IF_ID_NPC = CURRENT_STATE.IF_ID_NPC;
+	}
+	else if (CURRENT_STATE.PC - MEM_TEXT_START >= 4*NUM_INST) {
 //		printf("1rrrr");
 		CURRENT_STATE.IF_ID_NPC = CURRENT_STATE.PC;
 		CURRENT_STATE.PIPE[0] = 0;
-	} 
+	}
 	else if(CURRENT_STATE.MEM_WB_FORWARD_REG==1){
 //		printf("2ssss");
 		CURRENT_STATE.PIPE[0] = CURRENT_STATE.PIPE[0];
@@ -83,7 +90,10 @@ void IF_Stage(){
 void ID_Stage(){
 	
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if (CURRENT_STATE.IF_ID_NPC - MEM_TEXT_START >= 4*NUM_INST) {
+	if(miss_penalty>0&&miss_penalty !=31){
+		CURRENT_STATE.ID_EX_NPC= CURRENT_STATE.ID_EX_NPC;
+	}
+	else if (CURRENT_STATE.IF_ID_NPC - MEM_TEXT_START >= 4*NUM_INST) {
 		CURRENT_STATE.ID_EX_NPC = CURRENT_STATE.IF_ID_NPC;
 		CURRENT_STATE.PIPE[1] = 0;
 	}
@@ -124,7 +134,10 @@ void ID_Stage(){
 void EX_Stage(){
 //	CURRENT_STATE.IF_PC = 0;
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if (CURRENT_STATE.ID_EX_NPC - MEM_TEXT_START >= 4*NUM_INST) {
+	if(miss_penalty>0&&miss_penalty !=31){
+		CURRENT_STATE.EX_MEM_NPC = CURRENT_STATE.EX_MEM_NPC;
+	}
+	else if (CURRENT_STATE.ID_EX_NPC - MEM_TEXT_START >= 4*NUM_INST) {
 		CURRENT_STATE.EX_MEM_NPC = CURRENT_STATE.ID_EX_NPC;
 		CURRENT_STATE.PIPE[2] = 0;
 	}
@@ -321,11 +334,16 @@ void EX_Stage(){
 void MEM_Stage(){
 
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if (CURRENT_STATE.EX_MEM_NPC - MEM_TEXT_START >= 4*NUM_INST) {
+	if(miss_penalty>1){
+		CURRENT_STATE.MEM_WB_NPC = 0;
+	}
+	else if(miss_penalty == 1){
+		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
+	}
+	else if (CURRENT_STATE.EX_MEM_NPC - MEM_TEXT_START >= 4*NUM_INST) {
 		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.EX_MEM_NPC;
 		CURRENT_STATE.PIPE[3] = 0;
 	}	
-
 	else if(CURRENT_STATE.EX_MEM_NPC != 0){
 		instruction* instrp; 
 		instrp = get_inst_info(CURRENT_STATE.EX_MEM_NPC);
@@ -338,7 +356,7 @@ void MEM_Stage(){
 		int tempV = 0;
 		int tempV2 = 0;
 		if(OPCODE(instrp) == 43){
-		//sw 
+			//sw 
 			int i, j;
 			
 			for (j = 0; j < 4; j++) {
@@ -408,10 +426,73 @@ void MEM_Stage(){
 				}
 			}
 		}
+		
 		else if(OPCODE(instrp) == 35){
 		//lw
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
+			printf("index bit is: %x\n",Index_Bit);	
+			printf("block offset is: %x\n", Block_Offset);
+			printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
+			printf("TAG is: %x\n",TAG);
+			int i,j;
+			//checking cache hit
+			for (j = 0; j<4 ; j++){
+				if(Cache_info[Index_Bit][j][1] ==  TAG && Cache_info[Index_Bit][j][0] ==1){
+					CURRENT_STATE.MEM_WB_MEM_OUT = Cache[Index_Bit][j][Block_Offset];
+					for(i = 0;i<4;i++){
+						if(Cache_info[Index_Bit][i][2]< Cache_info[Index_Bit][j][2]&& Cache_info[Index_Bit][i][0] ==1){
+							Cache_info[Index_Bit][i][2] +=1;
+						} 
+					}
+					Cache_info[Index_Bit][j][2] = 0;
+					tempV = 1;
+				}
+			}
+			if(tempV==0){
+				//when cannot find the data from the cache:
+				//first find whether is a empty space:
+				miss_penalty = 31;
+				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
+				int tempV2 = 0;
+				for(j = 0; j<4; j++){
+					if(Cache_info[Index_Bit][j][0] ==0&&tempV2==0){
+						Cache_info[Index_Bit][j][0] =1;
+						Cache_info[Index_Bit][j][1] = TAG;
+						Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.MEM_WB_MEM_OUT;
+						if(Block_Offset ==1){
+							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
+						}
+						else{
+							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
+						}
+						tempV2 =1;
+					}
+				}
+				//LRU 
+				if(tempV2 ==0){
+					
+					int tempJ =0;
+					int tempOrder = Cache_info[Index_Bit][0][2];
+					for(j =0;j<4;j++){
+						if(Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][2] >tempOrder){
+							tempJ = j;
+							tempOrder = Cache_info[Index_Bit][j][2];
+						} 
+					}
+					Cache[Index_Bit][tempJ][Block_Offset] =CURRENT_STATE.MEM_WB_MEM_OUT;
+					Cache_info[Index_Bit][tempJ][1] = TAG;
+					Cache_info[Index_Bit][tempJ][2] = 0;
+					if(Block_Offset ==1){
+						Cache[Index_Bit][tempJ][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
+					}
+					else{
+						Cache[Index_Bit][tempJ][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
+					}
+				}
+			}
 		}
+
 		if(CURRENT_STATE.EX_MEM_BR_TAKE ==1){
 			//flush
 			CURRENT_STATE.IF_ID_INST =1;
@@ -446,7 +527,10 @@ void MEM_Stage(){
 void WB_Stage(){
 	
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if(CURRENT_STATE.MEM_WB_NPC!=0){
+	if(miss_penalty>0){
+		CURRENT_STATE.PIPE[4] = 0;
+	}
+	else if(CURRENT_STATE.MEM_WB_NPC!=0){
 		instruction* instrp; 
 		instrp = get_inst_info(CURRENT_STATE.MEM_WB_NPC);
 		CURRENT_STATE.PIPE[4] = CURRENT_STATE.MEM_WB_NPC;
