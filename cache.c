@@ -59,6 +59,7 @@ void setCacheMissPenalty(int penalty_cycles)
 {
 /*	code for setting up miss penaly			*/
 /*	You may add additional code if you need to	*/	
+	//miss_penalty = penalty_cycles;
 	miss_penalty = 0;
 
 }

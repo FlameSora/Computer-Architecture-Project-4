@@ -12,6 +12,7 @@
 #include "util.h"
 #include "run.h"
 #include "cache.h"
+
 /***************************************************************/
 /*                                                             */
 /* Procedure: get_inst_info                                    */
@@ -33,15 +34,17 @@ instruction* get_inst_info(uint32_t pc) {
 /***************************************************************/
 void process_instruction(){
 	/** Your implementation here */
-	printf("%x cache 0 0: \n",Cache[0][0]);
+	
 	WB_Stage();
 	MEM_Stage();
 	EX_Stage();
 	ID_Stage();
 	IF_Stage();
+
 	if (miss_penalty != 0){
 		miss_penalty -= 1;
 	}
+
 }
 
 void IF_Stage(){
@@ -357,17 +360,95 @@ void MEM_Stage(){
 			CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
 		}
 		CURRENT_STATE.MEM_WB_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
+		uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<28)>>31;
+		uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<29)>>31;
+		uint32_t TAG = CURRENT_STATE.EX_MEM_ALU_OUT >> 4;
+		int tempV = 0;
+		int tempV2 = 0;
 		if(OPCODE(instrp) == 43){
-		//sw 
-			mem_write_32(CURRENT_STATE.EX_MEM_ALU_OUT, CURRENT_STATE.EX_MEM_W_VALUE);
+			//sw 
+			int i, j;
+			
+			for (j = 0; j < 4; j++) {
+				if (Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][1] == TAG) {
+					Cache_info[Index_Bit][j][3] = 1;
+					for (i = 0; i < 4; i++) {
+						if (i != j) {
+							Cache_info[Index_Bit][i][2]++;
+						}
+						else {
+							Cache_info[Index_Bit][i][2] = 0;
+						}
+					}
+					Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.EX_MEM_W_VALUE;
+					tempV = 1;
+				}
+			}
+			if (tempV == 0) {
+				// need to include stall
+				miss_penalty = 31;
+				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
+				CURRENT_STATE.MEM_STALL_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
+				mem_write_32(CURRENT_STATE.EX_MEM_ALU_OUT, CURRENT_STATE.EX_MEM_W_VALUE);
+				for (j = 0; j < 4; j++) {
+					if (Cache_info[Index_Bit][j][0] == 0 && tempV2 == 0) {
+						/*if (Block_Offset == 0) {
+							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
+						} else {
+							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
+							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+						}*/
+						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+						CURRENT_STATE.MEM_J = j;
+						CURRENT_STATE.MEM_BLOCK = Block_Offset;
+						tempV2 = 1;
+						Cache_info[Index_Bit][j][0] = 1;
+						Cache_info[Index_Bit][j][1] = TAG;
+						for (i = 0; i < 4; i++) {
+							if (i !=  j && Cache_info[Index_Bit][j][0] == 1) {
+								Cache_info[Index_Bit][j][2]++;
+							}
+						}
+					}
+				}
+				if (tempV2 == 0) {
+					for (j = 0; j < 4; j++) {
+						if (Cache_info[Index_Bit][j][2] == 3) {
+							if (Cache_info[Index_Bit][j][3] == 1) {
+								uint32_t addr;
+								addr = Cache_info[Index_Bit][j][1]<<4 + Index_Bit<<3;
+								mem_write_32(addr, Cache[Index_Bit][j][0]);
+								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
+							}
+							Cache_info[Index_Bit][j][3] = 0;
+							/*if (Block_Offset == 0) {
+								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
+							} else {
+								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
+								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+							}*/
+							CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+							CURRENT_STATE.MEM_J = j;
+							CURRENT_STATE.MEM_BLOCK = Block_Offset;
+							Cache_info[Index_Bit][j][0] = 1;
+							Cache_info[Index_Bit][j][1] = TAG;
+							Cache_info[Index_Bit][j][2] = 0;
+							for (i = 0; i < 4; i++) {
+								if (i != j && Cache_info[Index_Bit][j][0] == 1) {
+									Cache_info[Index_Bit][j][2]++;
+								}
+							}
+						}
+					}
+				}
+			}
 		}
+		
 		else if(OPCODE(instrp) == 35){
 		//lw
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-		       	uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<28)>>31;
-			uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<29)>>31;	
-			uint32_t TAG= CURRENT_STATE.EX_MEM_ALU_OUT>>4;
-			int tempV = 0;
 			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
 			printf("index bit is: %x\n",Index_Bit);	
 			printf("block offset is: %x\n", Block_Offset);
@@ -385,7 +466,7 @@ void MEM_Stage(){
 					}
 					Cache_info[Index_Bit][j][2] = 0;
 					tempV = 1;
-				}	
+				}
 			}
 			if(tempV==0){
 				//when cannot find the data from the cache:
@@ -434,10 +515,10 @@ void MEM_Stage(){
 				//	else{
 				//		Cache[Index_Bit][tempJ][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
 				//	}
-
 				}
 			}
 		}
+
 		if(CURRENT_STATE.EX_MEM_BR_TAKE ==1){
 			//flush
 			CURRENT_STATE.IF_ID_INST =1;
