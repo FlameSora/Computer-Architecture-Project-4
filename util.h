@@ -78,6 +78,9 @@ typedef struct CPU_State_Struct {
 	uint32_t MEM_STALL_ALU_OUT;
 	uint32_t MEM_STALL_W_VALUE;
 	unsigned char MEM_STALL_DEST;
+	uint32_t MEM_INDEX_BIT;
+	int MEM_J;
+	uint32_t MEM_BLOCK;
 
 	//Forwarding
 	unsigned char EX_MEM_FORWARD_REG;

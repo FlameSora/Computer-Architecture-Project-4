@@ -90,7 +90,7 @@ void IF_Stage(){
 void ID_Stage(){
 	
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if(miss_penalty>0&&miss_penalty !=31){
+	if(miss_penalty>0&&miss_penalty!=31){
 		CURRENT_STATE.ID_EX_NPC= CURRENT_STATE.ID_EX_NPC;
 	}
 	else if (CURRENT_STATE.IF_ID_NPC - MEM_TEXT_START >= 4*NUM_INST) {
@@ -134,7 +134,7 @@ void ID_Stage(){
 void EX_Stage(){
 //	CURRENT_STATE.IF_PC = 0;
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
-	if(miss_penalty>0&&miss_penalty !=31){
+	if(miss_penalty>0&&miss_penalty!=31){
 		CURRENT_STATE.EX_MEM_NPC = CURRENT_STATE.EX_MEM_NPC;
 	}
 	else if (CURRENT_STATE.ID_EX_NPC - MEM_TEXT_START >= 4*NUM_INST) {
@@ -337,8 +337,15 @@ void MEM_Stage(){
 	if(miss_penalty>1){
 		CURRENT_STATE.MEM_WB_NPC = 0;
 	}
-	else if(miss_penalty == 1){
+	else if (miss_penalty ==1){
 		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
+		Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][CURRENT_STATE.MEM_BLOCK] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT);
+		if(CURRENT_STATE.MEM_BLOCK ==1){
+			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][0] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT-4);
+		}
+		else{
+			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][1] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT+4);
+		}
 	}
 	else if (CURRENT_STATE.EX_MEM_NPC - MEM_TEXT_START >= 4*NUM_INST) {
 		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.EX_MEM_NPC;
@@ -349,6 +356,9 @@ void MEM_Stage(){
 		instrp = get_inst_info(CURRENT_STATE.EX_MEM_NPC);
 		CURRENT_STATE.PIPE[3] = CURRENT_STATE.EX_MEM_NPC;
 		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.EX_MEM_NPC;
+		if(miss_penalty == 1){
+			CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
+		}
 		CURRENT_STATE.MEM_WB_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
 		uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<28)>>31;
 		uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<29)>>31;
@@ -376,16 +386,22 @@ void MEM_Stage(){
 			}
 			if (tempV == 0) {
 				// need to include stall
+				miss_penalty = 31;
+				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
+				CURRENT_STATE.MEM_STALL_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
 				mem_write_32(CURRENT_STATE.EX_MEM_ALU_OUT, CURRENT_STATE.EX_MEM_W_VALUE);
 				for (j = 0; j < 4; j++) {
 					if (Cache_info[Index_Bit][j][0] == 0 && tempV2 == 0) {
-						if (Block_Offset == 0) {
+						/*if (Block_Offset == 0) {
 							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
 						} else {
 							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
 							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-						}
+						}*/
+						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+						CURRENT_STATE.MEM_J = j;
+						CURRENT_STATE.MEM_BLOCK = Block_Offset;
 						tempV2 = 1;
 						Cache_info[Index_Bit][j][0] = 1;
 						Cache_info[Index_Bit][j][1] = TAG;
@@ -406,13 +422,16 @@ void MEM_Stage(){
 								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
 							}
 							Cache_info[Index_Bit][j][3] = 0;
-							if (Block_Offset == 0) {
+							/*if (Block_Offset == 0) {
 								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
 							} else {
 								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
 								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-							}
+							}*/
+							CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+							CURRENT_STATE.MEM_J = j;
+							CURRENT_STATE.MEM_BLOCK = Block_Offset;
 							Cache_info[Index_Bit][j][0] = 1;
 							Cache_info[Index_Bit][j][1] = TAG;
 							Cache_info[Index_Bit][j][2] = 0;
@@ -454,18 +473,22 @@ void MEM_Stage(){
 				//first find whether is a empty space:
 				miss_penalty = 31;
 				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
+				CURRENT_STATE.MEM_STALL_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
 				int tempV2 = 0;
 				for(j = 0; j<4; j++){
 					if(Cache_info[Index_Bit][j][0] ==0&&tempV2==0){
 						Cache_info[Index_Bit][j][0] =1;
 						Cache_info[Index_Bit][j][1] = TAG;
-						Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.MEM_WB_MEM_OUT;
-						if(Block_Offset ==1){
-							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
-						}
-						else{
-							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
-						}
+						//Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.MEM_WB_MEM_OUT;
+						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+						CURRENT_STATE.MEM_J = j;
+						CURRENT_STATE.MEM_BLOCK = Block_Offset;
+					//	if(Block_Offset ==1){
+					//		Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
+					//	}
+					//	else{
+					//		Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
+					//	}
 						tempV2 =1;
 					}
 				}
@@ -480,15 +503,18 @@ void MEM_Stage(){
 							tempOrder = Cache_info[Index_Bit][j][2];
 						} 
 					}
-					Cache[Index_Bit][tempJ][Block_Offset] =CURRENT_STATE.MEM_WB_MEM_OUT;
+					CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
+					CURRENT_STATE.MEM_J = tempJ;
+					CURRENT_STATE.MEM_BLOCK = Block_Offset;
+					//Cache[Index_Bit][tempJ][Block_Offset] =CURRENT_STATE.MEM_WB_MEM_OUT;
 					Cache_info[Index_Bit][tempJ][1] = TAG;
 					Cache_info[Index_Bit][tempJ][2] = 0;
-					if(Block_Offset ==1){
-						Cache[Index_Bit][tempJ][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
-					}
-					else{
-						Cache[Index_Bit][tempJ][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
-					}
+				//	if(Block_Offset ==1){
+				//		Cache[Index_Bit][tempJ][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
+				//	}
+				//	else{
+				//		Cache[Index_Bit][tempJ][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
+				//	}
 				}
 			}
 		}
