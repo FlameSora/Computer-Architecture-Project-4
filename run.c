@@ -417,7 +417,8 @@ void MEM_Stage(){
 						if (Cache_info[Index_Bit][j][2] == 3) {
 							if (Cache_info[Index_Bit][j][3] == 1) {
 								uint32_t addr;
-								addr = Cache_info[Index_Bit][j][1]<<4 + Index_Bit<<3;
+								addr = (Cache_info[Index_Bit][j][1]<<4) + (Index_Bit<<3);
+								printf("Address: %x\n", addr);
 								mem_write_32(addr, Cache[Index_Bit][j][0]);
 								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
 							}
@@ -503,6 +504,14 @@ void MEM_Stage(){
 							tempOrder = Cache_info[Index_Bit][j][2];
 						} 
 					}
+					if (Cache_info[Index_Bit][tempJ][3] == 1) {
+						uint32_t addr;
+						addr = (Cache_info[Index_Bit][tempJ][1]<<4) + (Index_Bit<<3);
+						printf("Address: %x\n",addr); 
+						mem_write_32(addr, Cache[Index_Bit][tempJ][0]);
+						mem_write_32(addr+4, Cache[Index_Bit][tempJ][1]);
+					}
+					Cache_info[Index_Bit][tempJ][3] = 0;
 					CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 					CURRENT_STATE.MEM_J = tempJ;
 					CURRENT_STATE.MEM_BLOCK = Block_Offset;
