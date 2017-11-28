@@ -11,7 +11,7 @@
 
 #include "util.h"
 #include "run.h"
-
+#include "cache.h"
 /***************************************************************/
 /*                                                             */
 /* Procedure: get_inst_info                                    */
@@ -33,6 +33,7 @@ instruction* get_inst_info(uint32_t pc) {
 /***************************************************************/
 void process_instruction(){
 	/** Your implementation here */
+	printf("%x cache 0 0: \n",Cache[0][0]);
 	WB_Stage();
 	MEM_Stage();
 	EX_Stage();
@@ -335,7 +336,29 @@ void MEM_Stage(){
 		}
 		else if(OPCODE(instrp) == 35){
 		//lw
-			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);	
+			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
+		       	uint32_t Index_Bit = (CURRENT_STATE.EX_MEM_ALU_OUT<<30)>>31;
+			uint32_t Block_Offset = (CURRENT_STATE.EX_MEM_ALU_OUT<<31)>>31;	
+			uint32_t TAG= (CURRENT_STATE.EX_MEM_ALU_OUT<<2)>>2;
+			int tempV = 0;
+			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
+			printf("index bit is: %x\n",Index_Bit);	
+			printf("block offset is: %x\n", Block_Offset);
+			for (int j = 0; j<4 ; j++){
+				if(tag[Index_Bit][j] ==  TAG && valid[Index_Bit][j] ==1){
+					CURRENT_STATE.MEM_WB_MEM_OUT = Cache[i][j][Block_Offset];
+					for(int i = 0;i<4;i++){
+						if(order[Index_Bit][i]< order[Index_Bit][j]&& valid[Index_Bit][i] ==1){
+							order[Index_Bit][i] +=1;
+						} 
+					}
+					order[Index_Bit][j] = 0;
+					tempV = 1;
+				}	
+			}
+			if(tempV==0){
+				
+			}
 		}
 		if(CURRENT_STATE.EX_MEM_BR_TAKE ==1){
 			//flush
@@ -366,6 +389,8 @@ void MEM_Stage(){
 		CURRENT_STATE.MEM_WB_NPC = 0;
 	}	
 }
+
+
 void WB_Stage(){
 	
 //	printf("current pc is: %x\n",CURRENT_STATE.PC);
