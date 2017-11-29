@@ -34,7 +34,7 @@ instruction* get_inst_info(uint32_t pc) {
 /***************************************************************/
 void process_instruction(){
 	/** Your implementation here */
-	
+	int i, j;
 	WB_Stage();
 	MEM_Stage();
 	EX_Stage();
@@ -43,6 +43,17 @@ void process_instruction(){
 
 	if (miss_penalty != 0){
 		miss_penalty -= 1;
+	}
+	
+	printf("Cache Orders\n");
+
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < 4; j++) {
+			printf("%d ", Cache_info[i][j][2]);
+			if (j == 3) {
+				printf("\n");
+			}
+		}
 	}
 
 }
@@ -391,7 +402,7 @@ void MEM_Stage(){
 				if (Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][1] == TAG) {
 					Cache_info[Index_Bit][j][3] = 1;
 					for (i = 0; i < 4; i++) {
-						if (Cache_info[Index_Bit][i][2] < Cache_info[Index_Bit][j][2]) {
+						if (Cache_info[Index_Bit][i][2] < Cache_info[Index_Bit][j][2] && Cache_info[Index_Bit][i][0] == 1) {
 							Cache_info[Index_Bit][i][2]++;
 						}
 					}
@@ -406,10 +417,11 @@ void MEM_Stage(){
 				miss_penalty = 31;
 				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
 				CURRENT_STATE.MEM_STALL_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
+				CURRENT_STATE.STALL_FOR_DCACHE = 1;
 				//mem_write_32(CURRENT_STATE.EX_MEM_ALU_OUT, CURRENT_STATE.EX_MEM_W_VALUE);
 				// found empty space
 				for (j = 0; j < 4; j++) {
-					if (Cache_info[Index_Bit][j][0] == 0) {
+					if (Cache_info[Index_Bit][j][0] == 0 && tempV2 == 0) {
 						/*if (Block_Offset == 0) {
 							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
@@ -421,9 +433,11 @@ void MEM_Stage(){
 						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 						CURRENT_STATE.MEM_J = j;
 						CURRENT_STATE.MEM_BLOCK = Block_Offset;
+						CURRENT_STATE.MEM_STALL_W_VALUE = CURRENT_STATE.EX_MEM_W_VALUE;
 						tempV2 = 1;
 						Cache_info[Index_Bit][j][0] = 1;
 						Cache_info[Index_Bit][j][1] = TAG;
+						Cache_info[Index_Bit][j][2] = 0;
 						Cache_info[Index_Bit][j][3] = 1;
 						for (i = 0; i < 4; i++) {
 							if (i !=  j && Cache_info[Index_Bit][i][0] == 1) {
@@ -437,10 +451,12 @@ void MEM_Stage(){
 						if (Cache_info[Index_Bit][j][2] == 3) {
 							if (Cache_info[Index_Bit][j][3] == 1) {
 								// needs to write to memory
-								//miss_penalty = 31;
 								uint32_t addr;
 								addr = (Cache_info[Index_Bit][j][1]<<4) + (Index_Bit<<3);
 								printf("Address: %x\n", addr);
+								printf("way: %x\n", j);
+								printf("1st cache: %x\n", Cache[Index_Bit][j][0]);
+								printf("2nd cache: %x\n", Cache[Index_Bit][j][1]);
 								mem_write_32(addr, Cache[Index_Bit][j][0]);
 								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
 								CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
@@ -457,7 +473,7 @@ void MEM_Stage(){
 									}
 								}
 							} else {
-								//miss_penalty = 31;
+								// no need to write to memory
 								/*if (Block_Offset == 0) {
 									Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 									Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
@@ -479,18 +495,6 @@ void MEM_Stage(){
 									}
 								}
 							}
-							Cache_info[Index_Bit][j][3] = 0;
-							CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
-							CURRENT_STATE.MEM_J = j;
-							CURRENT_STATE.MEM_BLOCK = Block_Offset;
-							Cache_info[Index_Bit][j][0] = 1;
-							Cache_info[Index_Bit][j][1] = TAG;
-							Cache_info[Index_Bit][j][2] = 0;
-							for (i = 0; i < 4; i++) {
-								if (i != j && Cache_info[Index_Bit][j][0] == 1) {
-									Cache_info[Index_Bit][j][2]++;
-								}
-							}
 						}
 					}
 				}
@@ -499,6 +503,7 @@ void MEM_Stage(){
 		
 		else if(OPCODE(instrp) == 35){
 		//lw
+			CURRENT_STATE.STALL_FOR_DCACHE = 0;
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 	//		printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
 	//		printf("index bit is: %x\n",Index_Bit);	
@@ -536,7 +541,7 @@ void MEM_Stage(){
 						CURRENT_STATE.MEM_BLOCK = Block_Offset;
 						tempV2 =1;
 						for(i = 0;i<4;i++){
-							if(Cache_info[Index_Bit][i][2]< Cache_info[Index_Bit][j][2]&& Cache_info[Index_Bit][i][0] ==1){
+							if(Cache_info[Index_Bit][i][0] ==1 && j != i){
 								Cache_info[Index_Bit][i][2] +=1;
 							} 
 						}
