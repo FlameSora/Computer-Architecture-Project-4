@@ -338,13 +338,26 @@ void MEM_Stage(){
 		CURRENT_STATE.MEM_WB_NPC = 0;
 	}
 	else if (miss_penalty ==1){
-		CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
-		Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][CURRENT_STATE.MEM_BLOCK] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT);
-		if(CURRENT_STATE.MEM_BLOCK ==1){
-			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][0] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT-4);
+		if(CURRENT_STATE.STALL_FOR_DCACHE==1){
+		
+			CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
+			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][CURRENT_STATE.MEM_BLOCK] = CURRENT_STATE.MEM_STALL_W_VALUE;
+			if(CURRENT_STATE.MEM_BLOCK ==1){
+				Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][0] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT-4);
+			}
+			else{
+				Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][1] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT+4);
+			}
 		}
 		else{
-			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][1] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT+4);
+			CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
+			Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][CURRENT_STATE.MEM_BLOCK] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT);
+			if(CURRENT_STATE.MEM_BLOCK ==1){
+				Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][0] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT-4);
+			}
+			else{
+				Cache[CURRENT_STATE.MEM_INDEX_BIT][CURRENT_STATE.MEM_J][1] = mem_read_32(CURRENT_STATE.MEM_STALL_ALU_OUT+4);
+			}
 		}
 	}
 	else if (CURRENT_STATE.EX_MEM_NPC - MEM_TEXT_START >= 4*NUM_INST) {
@@ -368,6 +381,11 @@ void MEM_Stage(){
 		if(OPCODE(instrp) == 43){
 			//sw 
 			int i, j;
+		//	printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
+		//	printf("index bit is: %x\n",Index_Bit);	
+		//	printf("block offset is: %x\n", Block_Offset);
+		//	printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
+		//	printf("TAG is: %x\n",TAG);
 			// cache hit
 			for (j = 0; j < 4; j++) {
 				if (Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][1] == TAG) {
@@ -392,13 +410,6 @@ void MEM_Stage(){
 				mem_write_32(CURRENT_STATE.EX_MEM_ALU_OUT, CURRENT_STATE.EX_MEM_W_VALUE);
 				for (j = 0; j < 4; j++) {
 					if (Cache_info[Index_Bit][j][0] == 0 && tempV2 == 0) {
-						/*if (Block_Offset == 0) {
-							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
-						} else {
-							Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
-							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-						}*/
 						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 						CURRENT_STATE.MEM_J = j;
 						CURRENT_STATE.MEM_BLOCK = Block_Offset;
@@ -423,13 +434,6 @@ void MEM_Stage(){
 								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
 							}
 							Cache_info[Index_Bit][j][3] = 0;
-							/*if (Block_Offset == 0) {
-								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT + 4);
-							} else {
-								Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
-								Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-							}*/
 							CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 							CURRENT_STATE.MEM_J = j;
 							CURRENT_STATE.MEM_BLOCK = Block_Offset;
@@ -450,11 +454,11 @@ void MEM_Stage(){
 		else if(OPCODE(instrp) == 35){
 		//lw
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
-//			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
-//			printf("index bit is: %x\n",Index_Bit);	
-//			printf("block offset is: %x\n", Block_Offset);
-//			printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
-//			printf("TAG is: %x\n",TAG);
+	//		printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
+	//		printf("index bit is: %x\n",Index_Bit);	
+	//		printf("block offset is: %x\n", Block_Offset);
+	//		printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
+	//		printf("TAG is: %x\n",TAG);
 			int i,j;
 			//checking cache hit
 			for (j = 0; j<4 ; j++){
@@ -484,12 +488,6 @@ void MEM_Stage(){
 						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 						CURRENT_STATE.MEM_J = j;
 						CURRENT_STATE.MEM_BLOCK = Block_Offset;
-					//	if(Block_Offset ==1){
-					//		Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
-					//	}
-					//	else{
-					//		Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
-					//	}
 						tempV2 =1;
 						for(i = 0;i<4;i++){
 							if(Cache_info[Index_Bit][i][2]< Cache_info[Index_Bit][j][2]&& Cache_info[Index_Bit][i][0] ==1){
@@ -530,12 +528,6 @@ void MEM_Stage(){
 						} 
 					}
 					Cache_info[Index_Bit][tempJ][2] = 0;
-				//	if(Block_Offset ==1){
-				//		Cache[Index_Bit][tempJ][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT-4);
-				//	}
-				//	else{
-				//		Cache[Index_Bit][tempJ][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT+4);
-				//	}
 				}
 			}
 		}
