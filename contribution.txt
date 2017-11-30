@@ -1,0 +1,44 @@
+Contribution: 
+Min Kim - 50%
+Seunghun Koh - 50%
+
+Min Kim (14):
+      hahahahah
+      lw working
+      Merge branch 'master' of ssh://cs311.kaist.ac.kr:10022/Team47/Project4
+      lw working
+      stall and lw
+      fixing stalling process
+      cache
+      cacheMerge branch 'master' of ssh://cs311.kaist.ac.kr:10022/Team47/Project4
+      cacahe`
+      order fixing
+      fixing error
+      Merge branch 'master' of ssh://cs311.kaist.ac.kr:10022/Team47/Project4
+      fixing sw
+      error fixing
+
+Seunghun Koh (13):
+      I got run.c and run.h
+      Cache_info completed
+      Merging
+      store word done
+      Merge branch 'master' of ssh://cs311.kaist.ac.kr:10022/Team47/Project4
+      Mostly done
+      Using dirty bit
+      Merge branch 'master' of ssh://cs311.kaist.ac.kr:10022/Team47/Project4
+      Error checking
+      Store error checking
+      Some progess
+      Order issue done
+      run.c merged
+
+csb1204 (7):
+      handouts
+      minor updates
+      minor updates
+      fixed a few bugs and updated output
+      fixed a few bugs and updated output
+      fixed a few bugs and updated output
+      fixed bugs,new inputs and outputs
+
