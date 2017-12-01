@@ -44,7 +44,7 @@ void process_instruction(){
 	if (miss_penalty != 0){
 		miss_penalty -= 1;
 	}
-	
+	/*
 	printf("Cache Orders\n");
 
 	for (i = 0; i < 2; i++) {
@@ -54,7 +54,7 @@ void process_instruction(){
 				printf("\n");
 			}
 		}
-	}
+	}*/
 
 }
 
@@ -344,19 +344,11 @@ void EX_Stage(){
 
 void MEM_Stage(){
 
-//	printf("current pc is: %x\n",CURRENT_STATE.PC);
 	if(miss_penalty>1){
 		CURRENT_STATE.MEM_WB_NPC = 0;
 	}
 	else if (miss_penalty ==1){
 		
-		printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
-		printf("index bit is: %x\n",CURRENT_STATE.MEM_INDEX_BIT);
-		printf("block offset is: %x\n", CURRENT_STATE.MEM_BLOCK);
-		printf("mem read is : %x\n",CURRENT_STATE.MEM_STALL_ALU_OUT);
-		printf("W out is: %x\n",CURRENT_STATE.MEM_STALL_W_VALUE);
-		printf("J is: %x\n", CURRENT_STATE.MEM_J);
-		printf("FOR DCAHCE is: %x\n",CURRENT_STATE.STALL_FOR_DCACHE);
 		if(CURRENT_STATE.STALL_FOR_DCACHE==1){
 		
 			CURRENT_STATE.MEM_WB_NPC = CURRENT_STATE.MEM_STALL_NPC;
@@ -397,17 +389,16 @@ void MEM_Stage(){
 		uint32_t TAG = CURRENT_STATE.EX_MEM_ALU_OUT >> 4;
 		int tempV = 0;
 		int tempV2 = 0;
+		int tempV3 = 0;
 		if(OPCODE(instrp) == 43){
 			//sw 
 			int i, j;
-			printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
-			printf("index bit is: %x\n",Index_Bit);	
-			printf("block offset is: %x\n", Block_Offset);
-			printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
-			printf("TAG is: %x\n",TAG);
+			//printf("Storing....\n");
 			// cache hit
 			for (j = 0; j < 4; j++) {
 				if (Cache_info[Index_Bit][j][0] == 1 && Cache_info[Index_Bit][j][1] == TAG) {
+					//printf("Cache hit\n");
+					//printf("way: %d\n", j);
 					Cache_info[Index_Bit][j][3] = 1;
 					for (i = 0; i < 4; i++) {
 						if (Cache_info[Index_Bit][i][2] < Cache_info[Index_Bit][j][2] && Cache_info[Index_Bit][i][0] == 1) {
@@ -421,6 +412,7 @@ void MEM_Stage(){
 			}
 			// cache miss
 			if (tempV == 0) {
+				//printf("Cache Miss\n");
 				CURRENT_STATE.STALL_FOR_DCACHE = 1;
 				// need to include stall
 				miss_penalty = 31;
@@ -439,6 +431,8 @@ void MEM_Stage(){
 							Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 						}*/
 						//miss_penalty = 31;
+						//printf("Empty Cache\n");
+						//printf("way: %d\n", j);
 						CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 						CURRENT_STATE.MEM_J = j;
 						CURRENT_STATE.MEM_BLOCK = Block_Offset;
@@ -457,15 +451,17 @@ void MEM_Stage(){
 				}
 				if (tempV2 == 0) {
 					for (j = 0; j < 4; j++) {
-						if (Cache_info[Index_Bit][j][2] == 3) {
+						if (Cache_info[Index_Bit][j][2] == 3 && tempV3 == 0) {
 							if (Cache_info[Index_Bit][j][3] == 1) {
 								// needs to write to memory
+								tempV3 = 1;
 								uint32_t addr;
 								addr = (Cache_info[Index_Bit][j][1]<<4) + (Index_Bit<<3);
-								printf("Address: %x\n", addr);
-								printf("way: %x\n", j);
-								printf("1st cache: %x\n", Cache[Index_Bit][j][0]);
-								printf("2nd cache: %x\n", Cache[Index_Bit][j][1]);
+								//printf("It's dirty\n");
+								//printf("Address: %x\n", addr);
+								//printf("way: %x\n", j);
+								//printf("1st cache: %x\n", Cache[Index_Bit][j][0]);
+								//printf("2nd cache: %x\n", Cache[Index_Bit][j][1]);
 								mem_write_32(addr, Cache[Index_Bit][j][0]);
 								mem_write_32(addr+4, Cache[Index_Bit][j][1]);
 								CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
@@ -490,6 +486,9 @@ void MEM_Stage(){
 									Cache[Index_Bit][j][0] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT - 4);
 									Cache[Index_Bit][j][1] = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 								}*/
+								//printf("It's not dirty\n");
+								//printf("way: %x\n", j);
+								tempV3 = 1;
 								CURRENT_STATE.MEM_INDEX_BIT = Index_Bit;
 								CURRENT_STATE.MEM_J = j;
 								CURRENT_STATE.MEM_BLOCK = Block_Offset;
@@ -512,18 +511,16 @@ void MEM_Stage(){
 		
 		else if(OPCODE(instrp) == 35){
 		//lw
+			//printf("Loading...\n");
 			CURRENT_STATE.STALL_FOR_DCACHE = 0;
 			CURRENT_STATE.MEM_WB_MEM_OUT = mem_read_32(CURRENT_STATE.EX_MEM_ALU_OUT);
 			CURRENT_STATE.STALL_FOR_DCACHE = 0;
-	//		printf("ADD in LW: %x\n", CURRENT_STATE.EX_MEM_ALU_OUT);
-	//		printf("index bit is: %x\n",Index_Bit);	
-	//		printf("block offset is: %x\n", Block_Offset);
-	//		printf("mem read is : %x\n",CURRENT_STATE.MEM_WB_MEM_OUT);
-	//		printf("TAG is: %x\n",TAG);
 			int i,j;
 			//checking cache hit
 			for (j = 0; j<4 ; j++){
 				if(Cache_info[Index_Bit][j][1] ==  TAG && Cache_info[Index_Bit][j][0] ==1){
+					//printf("Cache hit\n");
+					//printf("way: %d\n", j);
 					CURRENT_STATE.MEM_WB_MEM_OUT = Cache[Index_Bit][j][Block_Offset];
 					for(i = 0;i<4;i++){
 						if(Cache_info[Index_Bit][i][2]< Cache_info[Index_Bit][j][2]&& Cache_info[Index_Bit][i][0] ==1){
@@ -537,12 +534,15 @@ void MEM_Stage(){
 			if(tempV==0){
 				//when cannot find the data from the cache:
 				//first find whether is a empty space:
+				//printf("Cache miss\n");
 				miss_penalty = 31;
 				CURRENT_STATE.MEM_STALL_NPC = CURRENT_STATE.MEM_WB_NPC;
 				CURRENT_STATE.MEM_STALL_ALU_OUT = CURRENT_STATE.EX_MEM_ALU_OUT;
 				int tempV2 = 0;
 				for(j = 0; j<4; j++){
 					if(Cache_info[Index_Bit][j][0] ==0&&tempV2==0){
+						//printf("Empty cache\n");
+						//printf("way: %d\n", j);
 						Cache_info[Index_Bit][j][0] =1;
 						Cache_info[Index_Bit][j][1] = TAG;
 						//Cache[Index_Bit][j][Block_Offset] = CURRENT_STATE.MEM_WB_MEM_OUT;
@@ -561,7 +561,7 @@ void MEM_Stage(){
 				
 				//LRU 
 				if(tempV2 ==0){
-					
+					//printf("No empty cache\n");
 					int tempJ =0;
 					int tempOrder = Cache_info[Index_Bit][0][2];
 					for(j =0;j<4;j++){
@@ -570,11 +570,11 @@ void MEM_Stage(){
 							tempOrder = Cache_info[Index_Bit][j][2];
 						} 
 					}	
-
+					//printf("way: %d\n", tempJ);
 					if (Cache_info[Index_Bit][tempJ][3] == 1) {
 						uint32_t addr;
 						addr = (Cache_info[Index_Bit][tempJ][1]<<4) + (Index_Bit<<3);
-						printf("Address: %x\n",addr); 
+						//printf("Address: %x\n",addr); 
 						mem_write_32(addr, Cache[Index_Bit][tempJ][0]);
 						mem_write_32(addr+4, Cache[Index_Bit][tempJ][1]);
 					}
@@ -646,7 +646,7 @@ void WB_Stage(){
 			RUN_BIT = FALSE;
 		}
 		INSTRUCTION_COUNT++;
-		printf("increased to %d\n", INSTRUCTION_COUNT);
+		//printf("increased to %d\n", INSTRUCTION_COUNT);
 	} else {
 		CURRENT_STATE.PIPE[4] = 0;
 	}	
